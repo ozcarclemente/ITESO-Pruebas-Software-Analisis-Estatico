@@ -1,0 +1,50 @@
+name: Playwright Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'playwright/**'
+      - '.github/workflows/playwright-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'playwright/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: playwright
+        run: npm install
+
+      - name: Install Playwright browsers
+        working-directory: playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Cucumber tests
+        working-directory: playwright
+        env:
+          CI: 'true'
+        run: npm test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ matrix.node-version }}
+          path: |
+            playwright/cucumber-report.json
+            playwright/reports/
+          retention-days: 7
